@@ -193,7 +193,48 @@ function dataToolsPage(){if(!hasProAccess())return lockedFeaturePage('Data Impor
 function render(){if(state.planExpiry&&Date.now()>state.planExpiry){state.plan='Simple';state.planExpiry=0;save()}let m=$('#main');m.innerHTML=state.page==='editor'?editor():state.page==='dashboard'?dashboard():state.page==='products'?productsPage():state.page==='store'?storePage():state.page==='orders'?ordersPage():state.page==='analytics'?analyticsPage():state.page==='customers'?customersPage():state.page==='finance'?financePage():state.page==='datatools'?dataToolsPage():state.page==='offers'?offersPage():state.page==='sale'?salePage():state.page==='floating'?floatingPosterPage():plansPage();$$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===state.page));document.body.classList.toggle('festlocked',!hasProAccess());if(TEST_MODE&&state.page==='plans'&&!window.CUST_MODE)m.insertAdjacentHTML('beforeend',testPlanBox());if(typeof updateCartBar==='function')updateCartBar()}
 function openModal(html){$('#modal').innerHTML=html;$('#modalback').style.display='flex'}function closeModal(){$('#modalback').style.display='none'}
 function getAdminEmail(){return (localStorage.getItem('slp2_admin_email')||'ishans0612@gmail.com').trim().toLowerCase()}
-function adminPin(){const c=sbConfig();if(!c.url||!c.key){adminSupabaseSetup();return}openModal(`<h2>Admin Access</h2><p class="sub">Enter your Main Admin email and its Supabase account password.</p><label class="field">Admin email</label><input id="admin-login-email" class="input" type="email" value="${esc(getAdminEmail())}" autocomplete="username"><label class="field">Admin password</label><input id="admin-login-password" class="input" type="password" autocomplete="current-password" placeholder="Your Supabase Admin password"><div class="modalfoot"><button class="greenbtn" onclick="adminPasswordLogin()">Secure Admin Login</button><button class="softbtn" onclick="closeModal()">Cancel</button></div><button class="softbtn" style="width:100%;margin-top:9px" onclick="adminSupabaseSetup()">Change Supabase connection</button><p class="sub">The app does not store your Admin password. Supabase must confirm this account and its server-side admin role.</p>`)}
+function adminPin(
+const TEMP_ADMIN_PASSWORD = '5APv=-Z?r*Pje';
+
+function adminPin() {
+  openModal(`
+    <h2>Admin Access</h2>
+    <p class="sub">Enter your Admin Access Password.</p>
+
+    <label class="field">Admin Password</label>
+    <input
+      id="admin-login-password"
+      class="input"
+      type="password"
+      placeholder="Enter Admin Password"
+      autocomplete="current-password"
+    >
+
+    <div class="modalfoot">
+      <button class="greenbtn" onclick="adminPasswordLogin()">
+        Open Admin Panel
+      </button>
+      <button class="softbtn" onclick="closeModal()">
+        Cancel
+      </button>
+    </div>
+  `);
+}
+
+function adminPasswordLogin() {
+  const password = document.getElementById(
+    'admin-login-password'
+  )?.value;
+
+  if (password !== TEMP_ADMIN_PASSWORD) {
+    toast('Incorrect Admin Password');
+    return;
+  }
+
+  closeModal();
+  adminPanel();
+}
+){const c=sbConfig();if(!c.url||!c.key){adminSupabaseSetup();return}openModal(`<h2>Admin Access</h2><p class="sub">Enter your Main Admin email and its Supabase account password.</p><label class="field">Admin email</label><input id="admin-login-email" class="input" type="email" value="${esc(getAdminEmail())}" autocomplete="username"><label class="field">Admin password</label><input id="admin-login-password" class="input" type="password" autocomplete="current-password" placeholder="Your Supabase Admin password"><div class="modalfoot"><button class="greenbtn" onclick="adminPasswordLogin()">Secure Admin Login</button><button class="softbtn" onclick="closeModal()">Cancel</button></div><button class="softbtn" style="width:100%;margin-top:9px" onclick="adminSupabaseSetup()">Change Supabase connection</button><p class="sub">The app does not store your Admin password. Supabase must confirm this account and its server-side admin role.</p>`)}
 function adminSupabaseSetup(){const c=sbConfig();openModal(`<h2>Connect Supabase</h2><p class="sub">This setup appears before Admin Login so you can connect the project first. Your Project URL and public anon/publishable key are saved in this browser.</p><label class="field">Supabase Project URL</label><input id="admin-sb-url" class="input" type="url" placeholder="https://your-project.supabase.co" value="${esc(c.url)}"><label class="field">Publishable / anon key</label><textarea id="admin-sb-key" class="input" rows="3" placeholder="Paste your Supabase publishable or anon key">${esc(c.key)}</textarea><div class="modalfoot"><button class="greenbtn" onclick="saveAdminSupabaseSetup()">Save & Continue</button><button class="softbtn" onclick="closeModal()">Cancel</button></div><p class="sub">Use only the public anon/publishable key. Never paste a service_role or sb_secret key into a browser app.</p>`)}
 function saveAdminSupabaseSetup(){const url=($('#admin-sb-url')?.value||'').trim().replace(/\/$/,'');const key=($('#admin-sb-key')?.value||'').trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)){toast('Enter the Project URL, for example https://abc123.supabase.co');return}if(key.length<20||/service_role|sb_secret_/i.test(key)){toast('Paste a valid public anon/publishable key, not a secret key');return}localStorage.setItem('slp2_sb_url',url);localStorage.setItem('slp2_sb_key',key);localStorage.setItem('slp2_sb_connected','configured');localStorage.setItem('SHOPLINK_SUPABASE_URL',url);localStorage.setItem('SHOPLINK_SUPABASE_KEY',key);closeModal();toast('Supabase details saved in this browser');adminPin()}
 async function adminPasswordLogin(){const c=sbConfig(),email=$('#admin-login-email')?.value.trim().toLowerCase(),password=$('#admin-login-password')?.value;if(!c.url||!c.key){toast('Supabase URL and anon key must be configured first');return}if(email!==getAdminEmail()){toast('This email is not the configured Main Admin');return}if(!password){toast('Enter your Admin password');return}try{const r=await fetch(c.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key},body:JSON.stringify({email,password})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.access_token)throw Error(d.msg||d.message||d.error_description||'Admin sign-in failed. Check account confirmation and password.');if((d.user?.email||'').toLowerCase()!==getAdminEmail())throw Error('Admin account does not match');const appMeta=d.user?.app_metadata||{};if(appMeta.role!=='admin'&&!(Array.isArray(appMeta.roles)&&appMeta.roles.includes('admin')))throw Error('This account is not assigned the server-side admin role yet. Set app_metadata.role = admin in Supabase first.');setSession(d);const logs=load('admin_activity',[]);logs.unshift({at:Date.now(),email,action:'Admin sign-in',agent:navigator.userAgent.slice(0,100)});localStorage.setItem('slp2_admin_activity',JSON.stringify(logs.slice(0,200)));closeModal();adminPanel() }catch(e){toast(e.message||'Admin sign-in failed')}}
